@@ -24,3 +24,32 @@ func TestSpritz(t *testing.T) {
 		}
 	}
 }
+
+func BenchmarkShuffle(b *testing.B) {
+	d := New()
+	for i := 0; i < b.N; i++ {
+		d.shuffle()
+	}
+}
+
+func BenchmarkAbsorb1kB(b *testing.B) {
+	var in [1 << 10]byte
+	d := New()
+	b.SetBytes(int64(len(in)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		d.Reset()
+		d.absorb(in[:])
+	}
+}
+
+func BenchmarkSqueeze1kB(b *testing.B) {
+	var out [1 << 10]byte
+	d := New()
+	b.SetBytes(int64(len(out)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		d.Reset()
+		d.squeeze(out[:])
+	}
+}

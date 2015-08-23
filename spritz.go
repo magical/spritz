@@ -64,9 +64,19 @@ func (d *digest) shuffle() {
 }
 
 func (d *digest) whip() {
-    for i := 0; i < size*2; i++ {
-        d.update()
+    i := d.i
+    j := d.j
+    k := d.k
+    w := d.w
+    for r := 0; r < size*2; r++ {
+        i += w
+        j = k + d.s[j + d.s[i]]
+        k = i + k + d.s[j]
+        d.s[i], d.s[j] = d.s[j], d.s[i]
     }
+    d.i = i
+    d.j = j
+    d.k = k
     d.w += 2
 }
 
@@ -83,27 +93,21 @@ func (d *digest) squeeze(b []byte) {
     if d.a > 0 {
         d.shuffle()
     }
-    for i := range b {
-        b[i] = d.drip()
+    i := d.i
+    j := d.j
+    k := d.k
+    w := d.w
+    z := d.z
+    for ii := range b {
+        i += w
+        j = k + d.s[j + d.s[i]]
+        k = i + k + d.s[j]
+        d.s[i], d.s[j] = d.s[j], d.s[i]
+        z = d.s[j + d.s[i + d.s[z + k]]]
+        b[ii] = z
     }
-}
-
-func (d *digest) drip() byte {
-    if d.a > 0 {
-        d.shuffle()
-    }
-    d.update()
-    return d.output()
-}
-
-func (d *digest) update() {
-    d.i += d.w
-    d.j = d.k + d.s[d.j + d.s[d.i]]
-    d.k = d.i + d.k + d.s[d.j]
-    d.swap(int(d.i), int(d.j))
-}
-
-func (d *digest) output() byte {
-    d.z = d.s[d.j + d.s[d.i + d.s[d.z + d.k]]]
-    return d.z
+    d.i = i
+    d.j = j
+    d.k = k
+    d.z = z
 }
