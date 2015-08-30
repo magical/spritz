@@ -45,8 +45,8 @@ func (h *Hash) Sum(b []byte) []byte {
 	if i+h.DigestSize > cap(b) {
 		b = append(b[:i], make([]byte, h.DigestSize)...)
 	}
-	q.Read(b[i:i+h.DigestSize])
-	return b[0:i+h.DigestSize]
+	q.Read(b[i : i+h.DigestSize])
+	return b[0 : i+h.DigestSize]
 }
 
 func (q *Sponge) absorbUint(v uint) {
