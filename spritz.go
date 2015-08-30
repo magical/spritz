@@ -1,114 +1,175 @@
+// Package spritz implements the Spritz hash function and Spritz-xor
+// stream cipher, as specified in the paper
+//
+//      Spritz—a spongy RC4-like stream cipher and hash function.
+//      Ronald L. Rivest and Jacob C. N. Schuldt
+//      https://people.csail.mit.edu/rivest/pubs/RS14.pdf
+//
+// Spritz is an evolution of RC4 and, like RC4, is rather slow.
+// Standard ciphers like AES are faster and have been more carefully analyzed.
+// Please consider this before using Spritz.
 package spritz
 
 const size = 256
 
-type digest struct {
-	i, j, k uint8
+// Sponge implements the Spritz sponge-like function.
+type Sponge struct {
+	s       [size]uint8
+	a       int   // number of bytes absorbed
+	i, j, k uint8 // state pointers
 	w       uint8
-	z       byte // last output byte
-	a       int  // number of bytes absorbed
-	s       [size]byte
+	z       uint8 // last output
 }
 
-func newDigest() *digest {
-	d := new(digest)
-	d.reset()
-	return d
+// NewSponge returns a new Sponge.
+func NewSponge() *Sponge {
+	q := new(Sponge)
+	q.Reset()
+	return q
 }
 
-func (d *digest) reset() {
-	d.i = 0
-	d.j = 0
-	d.k = 0
-	d.z = 0
-	d.a = 0
-	d.w = 1
-	for i := range d.s {
-		d.s[i] = byte(i)
+// Reset sets the Sponge to its initial state.
+func (q *Sponge) Reset() {
+	q.i = 0
+	q.j = 0
+	q.k = 0
+	q.z = 0
+	q.a = 0
+	q.w = 1
+	for i := range q.s {
+		q.s[i] = byte(i)
 	}
 }
 
-func (d *digest) swap(i, j int) {
-	d.s[i], d.s[j] = d.s[j], d.s[i]
+func (q *Sponge) swap(i, j int) {
+	q.s[i], q.s[j] = q.s[j], q.s[i]
 }
 
-func (d *digest) absorb(b []byte) {
+// Write adds data to the Sponge state.
+// It never returns an error.
+//
+// This is the Absorb operation from the Spritz paper.
+func (q *Sponge) Write(b []byte) (n int, err error) {
 	for _, v := range b {
-		if d.a == size/2 {
-			d.shuffle()
+		if q.a == size/2 {
+			q.shuffle()
 		}
-		d.swap(d.a, size/2+int(v%16))
-		d.a += 1
+		q.swap(q.a, size/2+int(v%16))
+		q.a++
 
-		if d.a == size/2 {
-			d.shuffle()
+		if q.a == size/2 {
+			q.shuffle()
 		}
-		d.swap(d.a, size/2+int(v/16))
-		d.a += 1
+		q.swap(q.a, size/2+int(v/16))
+		q.a++
 	}
+	return len(b), nil
 }
 
-func (d *digest) stop() {
-	if d.a == size/2 {
-		d.shuffle()
+// WriteStop writes a "stop symbol" to the Sponge state.
+//
+// This is the AbsorbStop operation from the Spritz paper.
+func (q *Sponge) WriteStop() {
+	if q.a == size/2 {
+		q.shuffle()
 	}
-	d.a += 1
+	q.a++
 }
 
-func (d *digest) shuffle() {
-	d.whip()
-	d.crush()
-	d.whip()
-	d.crush()
-	d.whip()
-	d.a = 0
+func (q *Sponge) shuffle() {
+	q.whip()
+	q.crush()
+	q.whip()
+	q.crush()
+	q.whip()
+	q.a = 0
 }
 
-func (d *digest) whip() {
-	i := d.i
-	j := d.j
-	k := d.k
-	w := d.w
+func (q *Sponge) whip() {
+	i := q.i
+	j := q.j
+	k := q.k
+	w := q.w
+	s := &q.s
 	for r := 0; r < size*2; r++ {
 		i += w
-		j = k + d.s[j+d.s[i]]
-		k = i + k + d.s[j]
-		d.s[i], d.s[j] = d.s[j], d.s[i]
+		j = k + s[j+s[i]]
+		k = i + k + s[j]
+		s[i], s[j] = s[j], s[i]
 	}
-	d.i = i
-	d.j = j
-	d.k = k
-	d.w += 2
+	q.i = i
+	q.j = j
+	q.k = k
+	q.w += 2
 }
 
-func (d *digest) crush() {
+func (q *Sponge) crush() {
 	for i := 0; i < size/2; i++ {
 		// TODO: make constant-time
-		if d.s[i] > d.s[size-1-i] {
-			d.swap(i, size-1-i)
+		if q.s[i] > q.s[size-1-i] {
+			q.swap(i, size-1-i)
 		}
 	}
 }
 
-func (d *digest) squeeze(b []byte) {
-	if d.a > 0 {
-		d.shuffle()
+// Read fills b with pseudorandom bytes.
+// It never returns an error.
+//
+// This is the Squeeze operation from the Spritz paper.
+func (q *Sponge) Read(b []byte) (n int, err error) {
+	if q.a > 0 {
+		q.shuffle()
 	}
-	i := d.i
-	j := d.j
-	k := d.k
-	w := d.w
-	z := d.z
+	i := q.i
+	j := q.j
+	k := q.k
+	w := q.w
+	z := q.z
+	s := q.s
 	for ii := range b {
 		i += w
-		j = k + d.s[j+d.s[i]]
-		k = i + k + d.s[j]
-		d.s[i], d.s[j] = d.s[j], d.s[i]
-		z = d.s[j+d.s[i+d.s[z+k]]]
+		j = k + s[j+s[i]]
+		k = i + k + s[j]
+		s[i], s[j] = s[j], s[i]
+		z = s[j+s[i+s[z+k]]]
 		b[ii] = z
 	}
-	d.i = i
-	d.j = j
-	d.k = k
-	d.z = z
+	q.i = i
+	q.j = j
+	q.k = k
+	q.z = z
+	return len(b), nil
+}
+
+// XORKeyStream implements cipher.Stream:
+// it copies src to dst, XORing each byte with a byte of the key stream.
+//
+// Src and dst may point at the same memory, but may not otherwise overlap.
+//
+// XORKeyStream panics if dst is shorter than src.
+func (q *Sponge) XORKeyStream(dst, src []byte) {
+	if len(dst) < len(src) {
+		panic("spritz: destination buffer too small")
+	}
+	if q.a > 0 {
+		q.shuffle()
+	}
+	i := q.i
+	j := q.j
+	k := q.k
+	w := q.w
+	z := q.z
+	s := q.s
+	for ii, v := range src {
+		i += w
+		j = k + s[j+s[i]]
+		k = i + k + s[j]
+		s[i], s[j] = s[j], s[i]
+		z = s[j+s[i+s[z+k]]]
+		dst[ii] = v ^ z
+	}
+	q.i = i
+	q.j = j
+	q.k = k
+	q.z = z
 }
