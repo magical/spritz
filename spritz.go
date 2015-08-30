@@ -110,7 +110,7 @@ func (q *Sponge) crush() {
 		// Swap s[i] and s[j] if s[i] >= s[j]
 		si = s[i]
 		sj = s[j]
-		m = uint8((int32(si) - int32(sj))>>32)
+		m = uint8((int32(si) - int32(sj)) >> 32)
 		s[i] = si&m | sj&^m
 		s[j] = si&^m | sj&m
 	}
