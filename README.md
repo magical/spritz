@@ -10,7 +10,7 @@ See <https://godoc.org/github.com/magical/spritz>.
 License
 -------
 
-Copyright © 2015 Andrew Ekstedt
+Copyright © 2015 Andrew Ekstedt  
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
