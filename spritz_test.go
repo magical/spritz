@@ -14,8 +14,9 @@ func TestSpritz(t *testing.T) {
 		{"spam", []byte{0xf0, 0x60, 0x9a, 0x1d, 0xf1, 0x43, 0xce, 0xbf}},
 		{"arcfour", []byte{0x1a, 0xfa, 0x8b, 0x5e, 0xe3, 0x37, 0xdb, 0xc7}},
 	}
+	d := newDigest()
 	for _, tt := range tests {
-		d := New()
+		d.reset()
 		d.absorb([]byte(tt.in))
 		var got [8]byte
 		d.squeeze(got[:])
@@ -26,7 +27,7 @@ func TestSpritz(t *testing.T) {
 }
 
 func BenchmarkShuffle(b *testing.B) {
-	d := New()
+	d := newDigest()
 	for i := 0; i < b.N; i++ {
 		d.shuffle()
 	}
@@ -34,22 +35,22 @@ func BenchmarkShuffle(b *testing.B) {
 
 func BenchmarkAbsorb1kB(b *testing.B) {
 	var in [1 << 10]byte
-	d := New()
+	d := newDigest()
 	b.SetBytes(int64(len(in)))
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		d.Reset()
+		d.reset()
 		d.absorb(in[:])
 	}
 }
 
 func BenchmarkSqueeze1kB(b *testing.B) {
 	var out [1 << 10]byte
-	d := New()
+	d := newDigest()
 	b.SetBytes(int64(len(out)))
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		d.Reset()
+		d.reset()
 		d.squeeze(out[:])
 	}
 }

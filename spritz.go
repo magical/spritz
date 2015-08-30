@@ -3,19 +3,20 @@ package spritz
 const size = 256
 
 type digest struct {
-	i, j, k, w uint8
-	z          byte // last output byte
-	a          int  // number of bytes absorbed
-	s          [size]byte
+	i, j, k uint8
+	w       uint8
+	z       byte // last output byte
+	a       int  // number of bytes absorbed
+	s       [size]byte
 }
 
-func New() *digest {
+func newDigest() *digest {
 	d := new(digest)
-	d.Reset()
+	d.reset()
 	return d
 }
 
-func (d *digest) Reset() {
+func (d *digest) reset() {
 	d.i = 0
 	d.j = 0
 	d.k = 0
