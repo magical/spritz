@@ -129,7 +129,7 @@ func (q *Sponge) Read(b []byte) (n int, err error) {
 	k := q.k
 	w := q.w
 	z := q.z
-	s := q.s
+	s := &q.s
 	for ii := range b {
 		i += w
 		j = k + s[j+s[i]]
@@ -163,7 +163,7 @@ func (q *Sponge) XORKeyStream(dst, src []byte) {
 	k := q.k
 	w := q.w
 	z := q.z
-	s := q.s
+	s := &q.s
 	for ii, v := range src {
 		i += w
 		j = k + s[j+s[i]]
