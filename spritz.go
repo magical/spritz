@@ -104,11 +104,15 @@ func (q *Sponge) whip() {
 }
 
 func (q *Sponge) crush() {
-	for i := 0; i < size/2; i++ {
-		// TODO: make constant-time
-		if q.s[i] > q.s[size-1-i] {
-			q.swap(i, size-1-i)
-		}
+	s := &q.s
+	var m, si, sj uint8
+	for i, j := 0, size-1; i < j; i, j = i+1, j-1 {
+		// Swap s[i] and s[j] if s[i] >= s[j]
+		si = s[i]
+		sj = s[j]
+		m = uint8((int32(si) - int32(sj))>>32)
+		s[i] = si&m | sj&^m
+		s[j] = si&^m | sj&m
 	}
 }
 
